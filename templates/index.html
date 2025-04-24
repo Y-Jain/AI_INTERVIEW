@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>Voice To Text</title>
+</head>
+<body>
+  <div class="voice-to-text">
+    <h1>🎙️ Voice To Text</h1>
+    <textarea name="text" id="convert_text" rows="10" cols="50" placeholder="Your speech will appear here..."></textarea>
+    <br />
+    <button id="click_to_convert">Start Recording</button>
+    <button id="stop_recording" disabled>Stop & Save</button>
+  </div>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
