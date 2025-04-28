@@ -1,11 +1,61 @@
-*,*::after,*:before{
+/* *,*::after,*:before {
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     -ms-box-sizing: border-box;
     box-sizing: border-box;
 }
-body{
+body {
     font-family: arial;
+    font-size: 16px;
+    margin: 0;
+    background: linear-gradient(to right bottom, #d13cff, #031f6a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: #000;
+}
+.voice-to-text {
+    width: 600px;
+    text-align: center;
+}
+#convert_text {
+    width: 100%;
+    height: 200px;
+    border-radius: 10px;
+    resize: none;
+    padding: 10px;
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+h1 {
+    font-size: 50px;
+    color: #fff;
+}
+button {
+    padding: 12px 20px;
+    background: #0ea4da;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #fff;
+}
+#camera_feed {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    margin-top: 15px;
+    border-radius: 10px;
+    border: 3px solid #fff;
+    display: none;
+} */
+
+
+*,*::after,*:before{
+    box-sizing: border-box;
+}
+body{
+    font-family: Arial, sans-serif;
     font-size: 16px;
     margin: 0;
     background: linear-gradient(to right bottom, #d13cff, #031f6a);
@@ -18,7 +68,6 @@ body{
 .voice-to-text{
     width: 600px;
     text-align: center;
-
 }
 #convert_text{
     width: 100%;
@@ -30,8 +79,9 @@ body{
     margin-bottom: 10px;
 }
 h1{
-    font-size: 50px;
+    font-size: 40px;
     color: #fff;
+    margin-bottom: 20px;
 }
 button{
     padding: 12px 20px;
@@ -40,4 +90,11 @@ button{
     border-radius: 5px;
     cursor: pointer;
     color: #fff;
+    margin: 5px;
+}
+#warning_message {
+    display: none;
+    color: red;
+    font-size: 18px;
+    font-weight: bold;
 }

@@ -5,7 +5,7 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 JSON_FILE = "transcripts.json"
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)       
 
 # Ensure JSON file exists
 if not os.path.exists(JSON_FILE):

@@ -1,11 +1,33 @@
 const convert_text = document.getElementById("convert_text");
 const startBtn = document.getElementById("click_to_convert");
 const stopBtn = document.getElementById("stop_recording");
+const cameraFeed = document.getElementById("camera_feed");
 
 let recognition;
 let mediaRecorder;
 let audioChunks = [];
 let finalTranscript = "";
+
+// Disable Start button until camera loads
+startBtn.disabled = true;
+
+// Prompt for camera access immediately on page load
+window.addEventListener("load", async () => {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraFeed.srcObject = stream;
+      cameraFeed.style.display = "block";
+      startBtn.disabled = false;
+    } catch (error) {
+      alert("Camera access is required to use this app.");
+      startBtn.disabled = true;
+    }
+  } else {
+    alert("Your browser does not support accessing the camera.");
+    startBtn.disabled = true;
+  }
+});
 
 startBtn.addEventListener("click", async () => {
   window.SpeechRecognition = window.webkitSpeechRecognition;
@@ -58,6 +80,9 @@ stopBtn.addEventListener("click", async () => {
 
     startBtn.disabled = false;
     stopBtn.disabled = true;
-    convert_text.value = ""; // Optional: reset text box
+    convert_text.value = "";
   };
 });
+
+
+
