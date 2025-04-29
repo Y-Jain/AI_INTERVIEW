@@ -2,18 +2,19 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import uuid
 from groq import Groq
-
-# --- CONFIG ---
 app = Flask(__name__)
 CORS(app)
 
-# Initialize the Groq client with your API key
 groq_client = Groq(api_key='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')
-
-# Store conversation and scoring data
 interview_data = {}
 
-# --- ROUTES ---
+questions = [
+    {"id": str(uuid.uuid4()), "question": "Can you tell me about yourself?"},
+    {"id": str(uuid.uuid4()), "question": "What are your strengths?"},
+    {"id": str(uuid.uuid4()), "question": "What are your weaknesses?"},
+    {"id": str(uuid.uuid4()), "question": "Why do you want this job?"},
+    {"id": str(uuid.uuid4()), "question": "Where do you see yourself in 5 years?"},
+]
 
 @app.route('/')
 def home():
@@ -21,11 +22,13 @@ def home():
 
 @app.route('/start_interview', methods=['POST'])
 def start_interview():
-    """Start the interview with an introductory question."""
-    intro_question = "Hi! Let's start the interview. Can you tell me about yourself?"
+    """Start the interview with a greeting and an introductory question."""
+    greeting_message = "Hello! Welcome to the interview session."
+    intro_question = "Let's start with an easy one: Can you tell me about yourself?"
     question_id = str(uuid.uuid4())  # Unique ID for the first question
     
     return jsonify({
+        "greeting": greeting_message,
         "question": intro_question,
         "question_id": question_id
     })
@@ -84,12 +87,37 @@ def save_audio():
         audio = request.files['audio']
         transcript = request.form['transcript']
 
-        # Save the audio file and transcript
-        audio.save(f"uploads/{audio.filename}")
         with open(f"uploads/{audio.filename}.txt", "w") as f:
             f.write(transcript)
 
-        return jsonify({"message": "Audio and transcript saved successfully!"})
+        return jsonify({"message": "transcript saved successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/get_questions', methods=['GET'])
+def get_questions():
+    """Provide a list of interview questions."""
+    return jsonify(questions)
+
+@app.route('/save_response', methods=['POST'])
+def save_response():
+    """Save the candidate's response to a question."""
+    try:
+        data = request.get_json()
+        question_id = data.get("question_id")
+        question = data.get("question")
+        response = data.get("response")
+
+        if not question_id or not question or not response:
+            return jsonify({"error": "Invalid input"}), 400
+
+        # Save the response (this could be saved to a database or file)
+        interview_data[question_id] = {
+            "question": question,
+            "response": response
+        }
+
+        return jsonify({"message": "Response saved successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -100,7 +128,7 @@ def generate_follow_up_question(messages):
     last_response = messages[-1]['content']
 
     # Use the response to generate a follow-up question
-    follow_up_prompt = f"Given the candidate's answer: {last_response}\nGenerate a relevant follow-up question."
+    follow_up_prompt = f"Given the candidate's answer: {last_response}\nGenerate a relevant follow-up question or ask something new from resume."
 
     try:
         # Use Groq API to generate the follow-up question
@@ -148,4 +176,4 @@ def score_answer_with_groq(answer: str, question: str) -> tuple:
 # --- MAIN ---
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)

@@ -1,12 +1,19 @@
 const convert_text = document.getElementById("convert_text");
-const startBtn = document.getElementById("click_to_convert");
+const startBtn = document.getElementById("start_interview");
 const stopBtn = document.getElementById("stop_recording");
 const cameraFeed = document.getElementById("camera_feed");
+const greetingMessage = document.getElementById("greeting_message");
+const feedbackSection = document.getElementById("feedback_section");
+const submitFeedbackBtn = document.getElementById("submit_feedback");
 
 let recognition;
 let mediaRecorder;
 let audioChunks = [];
 let finalTranscript = "";
+let questionCount = 0;
+const maxQuestions = 5; // Specify the number of questions
+let questions = []; // Array to store fetched questions
+let currentQuestionId = ""; // Track the current question ID
 
 // Disable Start button until camera loads
 startBtn.disabled = true;
@@ -27,6 +34,97 @@ window.addEventListener("load", async () => {
     alert("Your browser does not support accessing the camera. Please try a different browser.");
     startBtn.disabled = true;
   }
+  await fetchQuestions();
+});
+
+// Fetch questions from the backend
+async function fetchQuestions() {
+  try {
+    const response = await fetch("/get_questions");
+    if (!response.ok) {
+      throw new Error("Failed to fetch questions.");
+    }
+    questions = await response.json();
+  } catch (error) {
+    alert(`Error fetching questions: ${error.message}`);
+  }
+}
+
+startBtn.addEventListener("click", async () => {
+  // Disable the button and show greeting
+  startBtn.disabled = true;
+  greetingMessage.style.display = "block";
+  greetingMessage.textContent = "Welcome! Let's begin the interview.";
+  
+  // System speaks the greeting
+  const speech = new SpeechSynthesisUtterance("Welcome! Let's begin the interview.");
+  window.speechSynthesis.speak(speech);
+
+  // Wait for the greeting to finish
+  speech.onend = () => {
+    proceedWithInterview();
+  };
+});
+
+function proceedWithInterview() {
+  if (questionCount < maxQuestions && questionCount < questions.length) {
+    const currentQuestion = questions[questionCount].question;
+    currentQuestionId = questions[questionCount].id; // Track the question ID
+    questionCount++;
+    convert_text.value = currentQuestion;
+
+    // System speaks the question
+    const speech = new SpeechSynthesisUtterance(currentQuestion);
+    window.speechSynthesis.speak(speech);
+
+    // Wait for the question to finish before allowing the next question
+    speech.onend = () => {
+      if (questionCount === maxQuestions || questionCount === questions.length) {
+        endInterview();
+      } else {
+        sendResponse(currentQuestion, finalTranscript);
+      }
+    };
+  }
+}
+
+// Send candidate's response to the backend
+async function sendResponse(question, response) {
+  try {
+    const payload = { question_id: currentQuestionId, question, response };
+    const res = await fetch("/save_response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to save response.");
+    }
+
+    const result = await res.json();
+    console.log(result.message); // Log success message
+  } catch (error) {
+    alert(`Error saving response: ${error.message}`);
+  }
+}
+
+function endInterview() {
+  // System speaks the thank-you message
+  const thankYouMessage = "Thank you for your time. Please proceed to the feedback section.";
+  const speech = new SpeechSynthesisUtterance(thankYouMessage);
+  window.speechSynthesis.speak(speech);
+
+  // Wait for the thank-you message to finish
+  speech.onend = () => {
+    greetingMessage.style.display = "none";
+    feedbackSection.style.display = "block";
+  };
+}
+
+submitFeedbackBtn.addEventListener("click", () => {
+  alert("Thank you for your feedback!");
+  // Optionally, send feedback to the server
 });
 
 startBtn.addEventListener("click", async () => {
