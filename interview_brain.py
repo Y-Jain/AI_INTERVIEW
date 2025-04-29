@@ -1,80 +1,103 @@
+import json
 from groq import Groq
-groq_client = Groq(api_key='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')
+import re
 
-follow_up_questions = {}
+class InterviewBrain:
+    def __init__(self, api_key, model_config):
+        self.groq_client = Groq(api_key=api_key)
+        self.model_config = model_config
+        self.follow_up_questions = {}
 
-def get_resume_parsed_data():
-    """Parse the resume text and extract relevant information."""
-    # Placeholder function to parse resume text
-    # This should return a dictionary with parsed data
-    return {
-        "name": "John Doe",
-        "skills": ["Python", "Machine Learning"],
-        "experience": [
-            {
-                "company": "Tech Corp",
-                "role": "Software Engineer",
-                "duration": "2 years"
-            }
-        ]
-    }
+    def get_resume_parsed_data(self):
+        """Parse the resume text and extract relevant information."""
+        # Placeholder function to parse resume text
+        return {
+            "name": "John Doe",
+            "skills": ["Python", "Machine Learning"],
+            "experience": [
+                {
+                    "company": "Tech Corp",
+                    "role": "Software Engineer",
+                    "duration": "2 years"
+                }
+            ]
+        }
 
-def generate_question(follow_up={}):
-    prompt = f"Generate the question based on the resume data: {get_resume_parsed_data()} and the previous question and response of the candidate {follow_up} and the context of the interview. The question should be relevant to the candidate's experience and skills. only ask question do not give any context message just ask the question."
-
-    response = groq_client.chat.completions.create(
-        model="deepseek-r1-distill-llama-70b",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=150,
-        top_p=1,
-        stream=False
-    )
-    # Access the content directly from the first choice
-    groq_response = response.choices[0].message.content.strip()
-    return groq_response
-
-
-def generate_score(question, answer):
-    """Generate a score for the candidate's answer."""
-    prompt = f"Question: {question}\nAnswer: {answer}\n\nEvaluate the answer's accuracy and provide a score out of 5. Explain the score."
-    try:
-        response = groq_client.chat.completions.create(
-            model="deepseek-r1-distill-llama-70b",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=150,
-            top_p=1,
-            stream=False
+    def generate_question(self, follow_up=None):
+        if follow_up is None:
+            follow_up = {}
+        prompt = (
+            f"Generate the question based on the resume data: {self.get_resume_parsed_data()} "
+            f"and the previous question and response of the candidate {follow_up} and the context of the interview. "
+            f"The question should be relevant to the candidate's experience and skills. "
+            f"Only ask the question, do not give content of <think> tag."
         )
-        groq_response = response.choices[0].message.content.strip()
-        if "Score:" in groq_response:
-            score = int(groq_response.split("Score:")[1].split("/")[0].strip())
-            explanation = groq_response.split("Score:")[1].split("\n")[1].strip()
-        else:
+        response = self.groq_client.chat.completions.create(
+            model=self.model_config["model"],
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.model_config["temperature"],
+            max_tokens=self.model_config["max_tokens"],
+            top_p=self.model_config["top_p"],
+            stream=self.model_config["stream"]
+        )
+        return response.choices[0].message.content.strip()
+
+    def generate_score(self, question, answer):
+        """Generate a score for the candidate's answer."""
+        prompt = (
+            f"Question: {question}\nAnswer: {answer}\n\n"
+            f"Evaluate the answer's accuracy and provide a single score out of 5. "
+            f"Only return the score in the format 'Score: X' followed by an explanation."
+        )
+        try:
+            response = self.groq_client.chat.completions.create(
+                model=self.model_config["model"],
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.model_config["temperature"],
+                max_tokens=self.model_config["max_tokens"],
+                top_p=self.model_config["top_p"],
+                stream=self.model_config["stream"]
+            )
+            groq_response = response.choices[0].message.content.strip()
+            
+            # Extract score and explanation
             score = 0
             explanation = "The answer was not clear enough to assess."
-    except:
-        return 0, "Error in generating score."
-    return score, explanation
+            score_match = re.search(r'\bScore:\s*(\d+)', groq_response, re.IGNORECASE)
+            if score_match:
+                score = int(score_match.group(1))
+                explanation_start = groq_response.find("Explanation:")
+                explanation = groq_response[explanation_start:].strip() if explanation_start != -1 else groq_response
+            else:
+                explanation = groq_response  # Use the entire response if no "Score:" found
+        except Exception as e:
+            return 0, f"Error in generating score: {str(e)}"
+        
+        return score, explanation
+
+    def run_interview(self):
+        """Run the interview process."""
+        print("Hello, welcome to the interview. Let's start with some questions.")
+        while True:
+            question = self.generate_question(self.follow_up_questions)
+            print(question)
+            answer = input("Your answer: ")
+            if answer.lower() == "exit":
+                break
+            score, explanation = self.generate_score(question, answer)
+            print(f"Score: {score}/5")
+            print(f"Explanation: {explanation}")
+            self.follow_up_questions[question] = answer
 
 
 
-def run_interview():
-    Greetings = "Hello, welcome to the interview. Let's start with some questions."
-    print(Greetings)
-    while True:
-        question = generate_question(follow_up_questions)
-        print(question)
-        answer = input("Your answer: ")
-        if answer.lower() == "exit":
-            break
-        score, explanation = generate_score(question, answer)
-        print(f"Score: {score}/5")
-        print(f"Explanation: {explanation}")
-        follow_up_questions[question] = answer
 
-
-
-if __name__ == "__main__":
-    run_interview()
+# obj=InterviewBrain(api_key = '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',
+# model_config = {
+#     "model": "llama-3.1-8b-instant",
+#     "temperature": 0.5,
+#     "max_tokens": 150,
+#     "top_p": 1,
+#     "stream": False
+# })
+# obj.run_interview()

@@ -12,8 +12,6 @@ let audioChunks = [];
 let finalTranscript = "";
 let questionCount = 0;
 const maxQuestions = 5; // Specify the number of questions
-let questions = []; // Array to store fetched questions
-let currentQuestionId = ""; // Track the current question ID
 
 // Disable Start button until camera loads
 startBtn.disabled = true;
@@ -34,21 +32,7 @@ window.addEventListener("load", async () => {
     alert("Your browser does not support accessing the camera. Please try a different browser.");
     startBtn.disabled = true;
   }
-  await fetchQuestions();
 });
-
-// Fetch questions from the backend
-async function fetchQuestions() {
-  try {
-    const response = await fetch("/get_questions");
-    if (!response.ok) {
-      throw new Error("Failed to fetch questions.");
-    }
-    questions = await response.json();
-  } catch (error) {
-    alert(`Error fetching questions: ${error.message}`);
-  }
-}
 
 startBtn.addEventListener("click", async () => {
   // Disable the button and show greeting
@@ -67,45 +51,43 @@ startBtn.addEventListener("click", async () => {
 });
 
 function proceedWithInterview() {
-  if (questionCount < maxQuestions && questionCount < questions.length) {
-    const currentQuestion = questions[questionCount].question;
-    currentQuestionId = questions[questionCount].id; // Track the question ID
-    questionCount++;
-    convert_text.value = currentQuestion;
-
-    // System speaks the question
-    const speech = new SpeechSynthesisUtterance(currentQuestion);
-    window.speechSynthesis.speak(speech);
-
-    // Wait for the question to finish before allowing the next question
-    speech.onend = () => {
-      if (questionCount === maxQuestions || questionCount === questions.length) {
-        endInterview();
-      } else {
-        sendResponse(currentQuestion, finalTranscript);
-      }
-    };
+  if (questionCount < maxQuestions) {
+    // Fetch the next question dynamically
+    processVoiceInput(finalTranscript);
+  } else {
+    endInterview();
   }
 }
 
-// Send candidate's response to the backend
-async function sendResponse(question, response) {
+// Send candidate's response to the backend and fetch the next question
+async function processVoiceInput(text) {
   try {
-    const payload = { question_id: currentQuestionId, question, response };
-    const res = await fetch("/save_response", {
+    const response = await fetch("/process_voice", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ text, follow_up_questions: {} }) // Add follow-up questions if needed
     });
 
-    if (!res.ok) {
-      throw new Error("Failed to save response.");
+    if (!response.ok) {
+      throw new Error("Failed to process voice input.");
     }
 
-    const result = await res.json();
-    console.log(result.message); // Log success message
+    const result = await response.json();
+
+    // Display the question and explanation
+    convert_text.value = `Question: ${result.question}\nScore: ${result.score}/5\nExplanation: ${result.explanation}`;
+
+    // System speaks the next question
+    const speech = new SpeechSynthesisUtterance(result.question);
+    window.speechSynthesis.speak(speech);
+
+    // Wait for the question to finish before proceeding
+    speech.onend = () => {
+      questionCount++;
+      finalTranscript = ""; // Reset the transcript for the next question
+    };
   } catch (error) {
-    alert(`Error saving response: ${error.message}`);
+    alert(`Error: ${error.message}`);
   }
 }
 
@@ -124,7 +106,6 @@ function endInterview() {
 
 submitFeedbackBtn.addEventListener("click", () => {
   alert("Thank you for your feedback!");
-  // Optionally, send feedback to the server
 });
 
 startBtn.addEventListener("click", async () => {
@@ -205,6 +186,10 @@ stopBtn.addEventListener("click", async () => {
       convert_text.value = "";
     }
   };
+
+  if (finalTranscript) {
+    processVoiceInput(finalTranscript);
+  }
 });
 
 
